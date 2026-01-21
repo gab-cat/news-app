@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArticleEditorSkeleton } from "@/components/ui/skeleton";
 import { EditorialEmptyState } from "@/components/ui/editorial-empty-state";
 import type { Id } from "convex/_generated/dataModel";
+import Prism from "prismjs";
+
 
 export const Route = createFileRoute("/admin/articles/$id")({
   loader: async (opts) => {
@@ -31,6 +33,12 @@ export const Route = createFileRoute("/admin/articles/$id")({
   },
   component: EditArticlePage,
 });
+
+// Ensure Prism is available on the window object for Lexical's code highlighting plugin.
+// This is wrapped in a check to prevent SSR errors during TanStack Start's rendering.
+if (typeof window !== "undefined") {
+    window.Prism = Prism;
+}
 
 function EditArticlePage() {
   const { id } = Route.useParams();
@@ -187,12 +195,12 @@ function EditArticlePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <a
-            href="/admin/articles"
+          <Link
+            to="/admin/articles"
             className="p-2 rounded-lg hover:bg-accent transition-colors"
           >
             <HugeiconsIcon icon={ArrowLeft02Icon} size={20} />
-          </a>
+          </Link>
           <div>
             <h1 className="text-2xl font-serif font-bold">Edit Article</h1>
             <p className="text-muted-foreground">

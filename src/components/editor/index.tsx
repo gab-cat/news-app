@@ -11,7 +11,7 @@ import { TRANSFORMERS } from "@lexical/markdown";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { ListItemNode, ListNode } from "@lexical/list";
-import { CodeHighlightNode, CodeNode } from "@lexical/code";
+import { CodeHighlightNode, CodeNode, registerCodeHighlighting } from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
@@ -20,6 +20,18 @@ import { useEffect, useRef } from "react";
 import { editorTheme } from "./theme";
 import { ToolbarPlugin } from "./toolbar-plugin";
 import { cn } from "@/lib/utils";
+
+import Prism from "prismjs";
+import "prismjs/components/prism-clike";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-css";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-markdown";
+
+if (typeof window !== "undefined") {
+  window.Prism = Prism;
+}
 
 function Placeholder() {
   return (
@@ -49,6 +61,14 @@ const editorConfig = {
     TableRowNode,
   ],
 };
+
+function CodeHighlightPlugin() {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    return registerCodeHighlighting(editor);
+  }, [editor]);
+  return null;
+}
 
 function InitialHtmlPlugin({ html }: { html?: string }) {
   const [editor] = useLexicalComposerContext();
@@ -96,6 +116,7 @@ export function Editor({ initialValue, onChange, className }: EditorProps) {
           <AutoFocusPlugin />
           <ListPlugin />
           <LinkPlugin />
+          <CodeHighlightPlugin />
           <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
           {onChange && (
             <OnChangePlugin
