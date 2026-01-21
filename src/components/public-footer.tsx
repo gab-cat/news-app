@@ -50,9 +50,9 @@ export function PublicFooter() {
         <div className="mt-20 pt-8 border-t border-border/40 flex flex-col md:flex-row justify-between items-center gap-6 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
           <p>© {new Date().getFullYear()} Chronicle Publishing Group. All rights reserved.</p>
           <div className="flex items-center gap-8">
-             <Link to="/">Terms</Link>
-             <Link to="/">Privacy</Link>
-             <Link to="/">Cookies</Link>
+             <Link to="/terms" className="hover:text-primary transition-colors">Terms</Link>
+             <Link to="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
+             <Link to="/" className="hover:text-primary transition-colors">Cookies</Link>
           </div>
         </div>
       </div>

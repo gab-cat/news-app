@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { auth } from "./auth";
 
 // ============ QUERIES ============
 
@@ -79,6 +80,11 @@ export const create = mutation({
     userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     // Check for duplicate email
     const existing = await ctx.db
       .query("authors")
@@ -111,6 +117,11 @@ export const update = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     const { id, ...updates } = args;
 
     const cleanUpdates = Object.fromEntries(
@@ -125,6 +136,11 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("authors") },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     // Check if author has articles
     const articles = await ctx.db
       .query("articles")

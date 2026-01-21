@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { auth } from "./auth";
 
 // ============ QUERIES ============
 
@@ -53,6 +54,11 @@ export const getByIds = query({
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -67,6 +73,11 @@ export const saveMedia = mutation({
     uploadedBy: v.optional(v.id("authors")),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     return await ctx.db.insert("media", {
       storageId: args.storageId,
       filename: args.filename,
@@ -85,6 +96,11 @@ export const updateAlt = mutation({
     alt: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     await ctx.db.patch(args.id, { alt: args.alt });
     return args.id;
   },
@@ -93,6 +109,11 @@ export const updateAlt = mutation({
 export const remove = mutation({
   args: { id: v.id("media") },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     const media = await ctx.db.get(args.id);
     if (!media) return;
 

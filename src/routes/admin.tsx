@@ -1,5 +1,7 @@
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
+import { useEffect } from "react";
 import {
   DashboardSquare01Icon,
   News01Icon,
@@ -27,8 +29,36 @@ const navItems = [
 
 function AdminLayout() {
   const { signOut } = useAuthActions();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && location.pathname !== "/admin/login") {
+      navigate({ to: "/admin/login" });
+    }
+  }, [isLoading, isAuthenticated, navigate, location.pathname]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <Logo />
+          <div className="h-4 w-32 bg-accent rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  // Allow the login page to be rendered without the layout wrapper
+  if (location.pathname === "/admin/login") {
+    return <Outlet />;
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect via useEffect
+  }
 
   return (
     <div className="min-h-screen bg-background flex font-sans">

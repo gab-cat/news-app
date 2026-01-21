@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { auth } from "./auth";
 
 // Helper to generate slug from title
 function generateSlug(title: string): string {
@@ -312,6 +313,11 @@ export const create = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     const slug = args.slug || generateSlug(args.title);
 
     const existing = await ctx.db
@@ -356,6 +362,11 @@ export const update = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     const { id, ...updates } = args;
 
     if (updates.slug) {
@@ -390,6 +401,11 @@ export const update = mutation({
 export const publish = mutation({
   args: { id: v.id("articles") },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     await ctx.db.patch(args.id, {
       status: "published",
       publishedAt: Date.now(),
@@ -402,6 +418,11 @@ export const publish = mutation({
 export const unpublish = mutation({
   args: { id: v.id("articles") },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     await ctx.db.patch(args.id, {
       status: "draft",
       updatedAt: Date.now(),
@@ -413,6 +434,11 @@ export const unpublish = mutation({
 export const archive = mutation({
   args: { id: v.id("articles") },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     await ctx.db.patch(args.id, {
       status: "archived",
       updatedAt: Date.now(),
@@ -424,6 +450,11 @@ export const archive = mutation({
 export const remove = mutation({
   args: { id: v.id("articles") },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     const associations = await ctx.db
       .query("articleMedia")
       .withIndex("by_article", (q) => q.eq("articleId", args.id))
@@ -444,6 +475,11 @@ export const attachMedia = mutation({
     mediaIds: v.array(v.id("media")),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     const existing = await ctx.db
       .query("articleMedia")
       .withIndex("by_article", (q) => q.eq("articleId", args.articleId))
@@ -472,6 +508,11 @@ export const detachMedia = mutation({
     mediaId: v.id("media"),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     const associations = await ctx.db
       .query("articleMedia")
       .withIndex("by_article", (q) => q.eq("articleId", args.articleId))

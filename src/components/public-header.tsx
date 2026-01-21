@@ -98,12 +98,6 @@ export function PublicHeader() {
                 </button>
               </div>
 
-              <Link
-                to="/admin"
-                className="hidden sm:block text-[12px] font-bold uppercase tracking-tighter py-2.5 px-6 border border-border hover:bg-foreground hover:text-background transition-all duration-500"
-              >
-                Journalist Portal
-              </Link>
             </div>
           </div>
         </div>
