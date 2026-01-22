@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
 
@@ -63,6 +63,19 @@ export const generateUploadUrl = mutation({
   },
 });
 
+// Core logic for saving media
+async function saveMediaImpl(ctx: any, args: any) {
+  return await ctx.db.insert("media", {
+    storageId: args.storageId,
+    filename: args.filename,
+    mimeType: args.mimeType,
+    size: args.size,
+    alt: args.alt,
+    uploadedBy: args.uploadedBy,
+    uploadedAt: Date.now(),
+  });
+}
+
 export const saveMedia = mutation({
   args: {
     storageId: v.id("_storage"),
@@ -77,18 +90,24 @@ export const saveMedia = mutation({
     if (userId === null) {
       throw new Error("Not authenticated");
     }
-
-    return await ctx.db.insert("media", {
-      storageId: args.storageId,
-      filename: args.filename,
-      mimeType: args.mimeType,
-      size: args.size,
-      alt: args.alt,
-      uploadedBy: args.uploadedBy,
-      uploadedAt: Date.now(),
-    });
+    return await saveMediaImpl(ctx, args);
   },
 });
+
+export const saveMediaInternal = internalMutation({
+  args: {
+    storageId: v.id("_storage"),
+    filename: v.string(),
+    mimeType: v.string(),
+    size: v.number(),
+    alt: v.optional(v.string()),
+    uploadedBy: v.optional(v.id("authors")),
+  },
+  handler: async (ctx, args) => {
+    return await saveMediaImpl(ctx, args);
+  },
+});
+
 
 export const updateAlt = mutation({
   args: {

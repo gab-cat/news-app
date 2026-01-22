@@ -22,7 +22,35 @@ export const Route = createRootRouteWithContext<{
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Chronicle — Premium News',
+        title: 'Chronicle — Premium News & Global Narratives',
+      },
+      {
+        name: 'description',
+        content: 'Chronicle delivers high-end journalism and deep-dive narratives on global shifts, technology, and culture.',
+      },
+      {
+        property: 'og:site_name',
+        content: 'Chronicle',
+      },
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        name: 'twitter:card',
+        content: 'summary_large_image',
+      },
+      {
+        name: 'twitter:site',
+        content: '@chronicle',
+      },
+      {
+        name: 'theme-color',
+        content: '#ffffff',
+      },
+      {
+        name: 'robots',
+        content: 'index, follow',
       },
     ],
     links: [

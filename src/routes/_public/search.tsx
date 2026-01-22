@@ -24,7 +24,19 @@ export const Route = createFileRoute("/_public/search")({
         convexQuery(api.articles.search, { query: q })
       );
     }
+    return { q };
   },
+  head: ({ loaderData }) => ({
+    meta: [
+      {
+        title: loaderData?.q ? `Search results for "${loaderData.q}" — Chronicle` : "Search the archives — Chronicle",
+      },
+      {
+        name: "description",
+        content: loaderData?.q ? `Exploring deep-dive narratives and reports matching "${loaderData.q}".` : "Search through Chronicle's extensive archives of global narratives.",
+      },
+    ],
+  }),
   component: SearchPage,
 });
 

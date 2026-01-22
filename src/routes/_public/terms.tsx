@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_public/terms")({
+  head: () => ({
+    meta: [
+      {
+        title: "Terms of Service — Chronicle",
+      },
+      {
+        name: "description",
+        content: "Chronicle's terms of service and legal agreement for using our platform.",
+      },
+    ],
+  }),
   component: TermsPage,
 });
 

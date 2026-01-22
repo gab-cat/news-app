@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_public/privacy")({
+  head: () => ({
+    meta: [
+      {
+        title: "Privacy Policy — Chronicle",
+      },
+      {
+        name: "description",
+        content: "How Chronicle handles your digital presence and respects your privacy.",
+      },
+    ],
+  }),
   component: PrivacyPage,
 });
 

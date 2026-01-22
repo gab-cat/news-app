@@ -16,9 +16,51 @@ import { NewsCard } from "@/components/news-card";
 export const Route = createFileRoute("/_public/article/$slug")({
   loader: async (opts) => {
     const { slug } = opts.params;
-    await opts.context.queryClient.ensureQueryData(
+    const article = await opts.context.queryClient.ensureQueryData(
       convexQuery(api.articles.getBySlug, { slug })
     );
+    return { article };
+  },
+  head: ({ loaderData }) => {
+    const article = loaderData?.article;
+    if (!article) return { title: "Article Not Found — Chronicle" };
+
+    const title = `${article.title} — Chronicle`;
+    const description = article.excerpt || "Read the latest deep-dive narrative on Chronicle.";
+    const imageUrl = article.featuredImage?.url;
+
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "article" },
+        ...(imageUrl ? [{ property: "og:image", content: imageUrl }] : []),
+        { name: "twitter:card", content: "summary_large_image" },
+        { property: "article:published_time", content: article.publishedAt ? new Date(article.publishedAt).toISOString() : "" },
+        { property: "article:author", content: article.author?.name },
+      ],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            "headline": article.title,
+            "description": article.excerpt,
+            "image": imageUrl ? [imageUrl] : [],
+            "datePublished": article.publishedAt ? new Date(article.publishedAt).toISOString() : "",
+            "dateModified": article.updatedAt ? new Date(article.updatedAt).toISOString() : "",
+            "author": [{
+              "@type": "Person",
+              "name": article.author?.name,
+              "url": `https://chronicle-news.app/authors/${article.author?.email}`
+            }]
+          }),
+        },
+      ],
+    };
   },
   component: ArticlePage,
 });

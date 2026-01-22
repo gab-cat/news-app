@@ -1,6 +1,6 @@
-import { mutation, action } from "./_generated/server";
+import { mutation, internalAction } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 const CATEGORIES = [
   { name: "Technology", slug: "technology", color: "#3b82f6", description: "The latest in tech and innovation." },
@@ -269,7 +269,7 @@ export const clearArticles = mutation({
   },
 });
 
-export const runSeed = action({
+export const runSeed = internalAction({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
@@ -301,7 +301,7 @@ export const runSeed = action({
         const response = await fetch(art.imageUrl);
         const blob = await response.blob();
         const storageId = await ctx.storage.store(blob);
-        mediaId = await ctx.runMutation(api.media.saveMedia, {
+        mediaId = await ctx.runMutation(internal.media.saveMediaInternal, {
           storageId,
           filename: `${art.slug}.jpg`,
           mimeType: "image/jpeg",
@@ -315,7 +315,7 @@ export const runSeed = action({
 
       const categoryId = categoryMap[art.categorySlug];
       if (categoryId) {
-        await ctx.runMutation(api.articles.create, {
+        await ctx.runMutation(internal.articles.createInternal, {
           title: art.title,
           slug: art.slug,
           excerpt: art.excerpt,
@@ -330,7 +330,7 @@ export const runSeed = action({
         // Publish the article immediately
         const article = await ctx.runQuery(api.articles.getBySlug, { slug: art.slug });
         if (article) {
-          await ctx.runMutation(api.articles.publish, { id: article._id });
+          await ctx.runMutation(internal.articles.publishInternal, { id: article._id });
         }
         
         articlesCreated++;

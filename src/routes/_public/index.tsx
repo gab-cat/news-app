@@ -8,6 +8,8 @@ import { HeroSkeleton, ArticleGridSkeleton } from "@/components/ui/skeleton";
 import { EditorialEmptyState } from "@/components/ui/editorial-empty-state";
 import { NewsCard } from "@/components/news-card";
 
+
+
 export const Route = createFileRoute("/_public/")({
   loader: async (opts) => {
     await Promise.all([
@@ -16,6 +18,46 @@ export const Route = createFileRoute("/_public/")({
       opts.context.queryClient.ensureQueryData(convexQuery(api.categories.list, {})),
     ]);
   },
+  head: () => ({
+    meta: [
+      {
+        title: "Chronicle — Premium News & Global Narratives",
+      },
+      {
+        name: "description",
+        content: "Experience journalism at its finest. Chronicle brings you deep-dive stories, expert analysis, and fresh perspectives on the world's most compelling narratives.",
+      },
+      {
+        property: "og:title",
+        content: "Chronicle — Premium News & Global Narratives",
+      },
+      {
+        property: "og:description",
+        content: "Experience journalism at its finest. Chronicle brings you deep-dive stories and expert analysis.",
+      },
+      {
+        property: "og:url",
+        content: "https://chronicle-news.app",
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "Chronicle",
+          "url": "https://chronicle-news.app",
+          "description": "Premium news and deep-dive narratives.",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://chronicle-news.app/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }),
+      },
+    ],
+  }),
   component: HomePage,
 });
 

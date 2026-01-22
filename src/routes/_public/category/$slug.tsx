@@ -10,10 +10,53 @@ import { NewsCard } from "@/components/news-card";
 export const Route = createFileRoute("/_public/category/$slug")({
   loader: async (opts) => {
     const { slug } = opts.params;
-    await Promise.all([
+    const [categories] = await Promise.all([
       opts.context.queryClient.ensureQueryData(convexQuery(api.categories.list, {})),
       opts.context.queryClient.ensureQueryData(convexQuery(api.articles.getByCategory, { categorySlug: slug })),
     ]);
+    return {
+      category: categories.find((c: any) => c.slug === slug),
+    };
+  },
+  head: ({ loaderData }) => {
+    const category = loaderData?.category;
+    if (!category) return {};
+
+    return {
+      meta: [
+        {
+          title: `${category.name} — Chronicle`,
+        },
+        {
+          name: "description",
+          content: category.description || `Explore the latest narratives and deep-dives in ${category.name}.`,
+        },
+        {
+          property: "og:title",
+          content: `${category.name} — Chronicle`,
+        },
+        {
+          property: "og:description",
+          content: category.description || `Explore the latest narratives and deep-dives in ${category.name}.`,
+        },
+        {
+          property: "og:type",
+          content: "website",
+        },
+      ],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "name": category.name,
+            "description": category.description,
+            "url": `https://chronicle-news.app/category/${category.slug}`,
+          }),
+        },
+      ],
+    };
   },
   component: CategoryPage,
 });

@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
 
@@ -300,6 +300,38 @@ export const getLatestPublished = query({
 
 // ============ MUTATIONS ============
 
+// Core logic for creating an article
+async function createImpl(ctx: any, args: any) {
+  const slug = args.slug || generateSlug(args.title);
+
+  const existing = await ctx.db
+    .query("articles")
+    .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+    .unique();
+
+  if (existing) {
+    throw new Error(`Article with slug "${slug}" already exists`);
+  }
+
+  const now = Date.now();
+
+  return await ctx.db.insert("articles", {
+    title: args.title,
+    slug,
+    excerpt: args.excerpt,
+    content: args.content,
+    categoryId: args.categoryId,
+    authorId: args.authorId,
+    status: "draft",
+    featuredImageId: args.featuredImageId,
+    isFeatured: args.isFeatured ?? false,
+    readingTimeMinutes: calculateReadingTime(args.content),
+    tags: args.tags,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 export const create = mutation({
   args: {
     title: v.string(),
@@ -318,36 +350,60 @@ export const create = mutation({
       throw new Error("Not authenticated");
     }
 
-    const slug = args.slug || generateSlug(args.title);
-
-    const existing = await ctx.db
-      .query("articles")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .unique();
-
-    if (existing) {
-      throw new Error(`Article with slug "${slug}" already exists`);
-    }
-
-    const now = Date.now();
-
-    return await ctx.db.insert("articles", {
-      title: args.title,
-      slug,
-      excerpt: args.excerpt,
-      content: args.content,
-      categoryId: args.categoryId,
-      authorId: args.authorId,
-      status: "draft",
-      featuredImageId: args.featuredImageId,
-      isFeatured: args.isFeatured ?? false,
-      readingTimeMinutes: calculateReadingTime(args.content),
-      tags: args.tags,
-      createdAt: now,
-      updatedAt: now,
-    });
+    return await createImpl(ctx, args);
   },
 });
+
+export const createInternal = internalMutation({
+  args: {
+    title: v.string(),
+    slug: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    content: v.string(),
+    categoryId: v.id("categories"),
+    authorId: v.id("authors"),
+    featuredImageId: v.optional(v.id("media")),
+    isFeatured: v.optional(v.boolean()),
+    tags: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    return await createImpl(ctx, args);
+  },
+});
+
+
+
+// Core logic for updating an article
+async function updateImpl(ctx: any, args: any) {
+  const { id, ...updates } = args;
+
+  if (updates.slug) {
+    const existing = await ctx.db
+      .query("articles")
+      .withIndex("by_slug", (q: any) => q.eq("slug", updates.slug!))
+      .unique();
+
+    if (existing && existing._id !== id) {
+      throw new Error(`Article with slug "${updates.slug}" already exists`);
+    }
+  }
+
+  let readingTimeMinutes;
+  if (updates.content) {
+    readingTimeMinutes = calculateReadingTime(updates.content);
+  }
+
+  const cleanUpdates = {
+    ...Object.fromEntries(
+      Object.entries(updates).filter(([, v]) => v !== undefined)
+    ),
+    ...(readingTimeMinutes ? { readingTimeMinutes } : {}),
+    updatedAt: Date.now(),
+  };
+
+  await ctx.db.patch(id, cleanUpdates);
+  return id;
+}
 
 export const update = mutation({
   args: {
@@ -367,36 +423,37 @@ export const update = mutation({
       throw new Error("Not authenticated");
     }
 
-    const { id, ...updates } = args;
-
-    if (updates.slug) {
-      const existing = await ctx.db
-        .query("articles")
-        .withIndex("by_slug", (q) => q.eq("slug", updates.slug!))
-        .unique();
-
-      if (existing && existing._id !== id) {
-        throw new Error(`Article with slug "${updates.slug}" already exists`);
-      }
-    }
-
-    let readingTimeMinutes;
-    if (updates.content) {
-      readingTimeMinutes = calculateReadingTime(updates.content);
-    }
-
-    const cleanUpdates = {
-      ...Object.fromEntries(
-        Object.entries(updates).filter(([, v]) => v !== undefined)
-      ),
-      ...(readingTimeMinutes ? { readingTimeMinutes } : {}),
-      updatedAt: Date.now(),
-    };
-
-    await ctx.db.patch(id, cleanUpdates);
-    return id;
+    return await updateImpl(ctx, args);
   },
 });
+
+export const updateInternal = internalMutation({
+  args: {
+    id: v.id("articles"),
+    title: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    content: v.optional(v.string()),
+    categoryId: v.optional(v.id("categories")),
+    featuredImageId: v.optional(v.id("media")),
+    isFeatured: v.optional(v.boolean()),
+    tags: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    return await updateImpl(ctx, args);
+  },
+});
+
+
+// Core logic for publishing an article
+async function publishImpl(ctx: any, args: { id: any }) {
+  await ctx.db.patch(args.id, {
+    status: "published",
+    publishedAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  return args.id;
+}
 
 export const publish = mutation({
   args: { id: v.id("articles") },
@@ -406,14 +463,27 @@ export const publish = mutation({
       throw new Error("Not authenticated");
     }
 
-    await ctx.db.patch(args.id, {
-      status: "published",
-      publishedAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-    return args.id;
+    return await publishImpl(ctx, args);
   },
 });
+
+export const publishInternal = internalMutation({
+  args: { id: v.id("articles") },
+  handler: async (ctx, args) => {
+    return await publishImpl(ctx, args);
+  },
+});
+
+
+
+// Core logic for unpublishing an article
+async function unpublishImpl(ctx: any, args: { id: any }) {
+  await ctx.db.patch(args.id, {
+    status: "draft",
+    updatedAt: Date.now(),
+  });
+  return args.id;
+}
 
 export const unpublish = mutation({
   args: { id: v.id("articles") },
@@ -423,13 +493,26 @@ export const unpublish = mutation({
       throw new Error("Not authenticated");
     }
 
-    await ctx.db.patch(args.id, {
-      status: "draft",
-      updatedAt: Date.now(),
-    });
-    return args.id;
+    return await unpublishImpl(ctx, args);
   },
 });
+
+export const unpublishInternal = internalMutation({
+  args: { id: v.id("articles") },
+  handler: async (ctx, args) => {
+    return await unpublishImpl(ctx, args);
+  },
+});
+
+
+// Core logic for archiving an article
+async function archiveImpl(ctx: any, args: { id: any }) {
+  await ctx.db.patch(args.id, {
+    status: "archived",
+    updatedAt: Date.now(),
+  });
+  return args.id;
+}
 
 export const archive = mutation({
   args: { id: v.id("articles") },
@@ -439,13 +522,32 @@ export const archive = mutation({
       throw new Error("Not authenticated");
     }
 
-    await ctx.db.patch(args.id, {
-      status: "archived",
-      updatedAt: Date.now(),
-    });
-    return args.id;
+    return await archiveImpl(ctx, args);
   },
 });
+
+export const archiveInternal = internalMutation({
+  args: { id: v.id("articles") },
+  handler: async (ctx, args) => {
+    return await archiveImpl(ctx, args);
+  },
+});
+
+
+// Core logic for removing an article
+async function removeImpl(ctx: any, args: { id: any }) {
+  const associations = await ctx.db
+    .query("articleMedia")
+    .withIndex("by_article", (q: any) => q.eq("articleId", args.id))
+    .collect();
+
+  for (const assoc of associations) {
+    await ctx.db.delete(assoc._id);
+  }
+
+  await ctx.db.delete(args.id);
+  return args.id;
+}
 
 export const remove = mutation({
   args: { id: v.id("articles") },
@@ -455,19 +557,40 @@ export const remove = mutation({
       throw new Error("Not authenticated");
     }
 
-    const associations = await ctx.db
-      .query("articleMedia")
-      .withIndex("by_article", (q) => q.eq("articleId", args.id))
-      .collect();
-
-    for (const assoc of associations) {
-      await ctx.db.delete(assoc._id);
-    }
-
-    await ctx.db.delete(args.id);
-    return args.id;
+    return await removeImpl(ctx, args);
   },
 });
+
+export const removeInternal = internalMutation({
+  args: { id: v.id("articles") },
+  handler: async (ctx, args) => {
+    return await removeImpl(ctx, args);
+  },
+});
+
+
+// Core logic for attaching media to an article
+async function attachMediaImpl(ctx: any, args: { articleId: any, mediaIds: any[] }) {
+  const existing = await ctx.db
+    .query("articleMedia")
+    .withIndex("by_article", (q: any) => q.eq("articleId", args.articleId))
+    .collect();
+
+  let order = existing.length > 0 ? Math.max(...existing.map((e: any) => e.order)) + 1 : 0;
+
+  for (const mediaId of args.mediaIds) {
+    const alreadyAttached = existing.find((e: any) => e.mediaId === mediaId);
+    if (!alreadyAttached) {
+      await ctx.db.insert("articleMedia", {
+        articleId: args.articleId,
+        mediaId,
+        order: order++,
+      });
+    }
+  }
+
+  return args.articleId;
+}
 
 export const attachMedia = mutation({
   args: {
@@ -480,27 +603,35 @@ export const attachMedia = mutation({
       throw new Error("Not authenticated");
     }
 
-    const existing = await ctx.db
-      .query("articleMedia")
-      .withIndex("by_article", (q) => q.eq("articleId", args.articleId))
-      .collect();
-
-    let order = existing.length > 0 ? Math.max(...existing.map((e) => e.order)) + 1 : 0;
-
-    for (const mediaId of args.mediaIds) {
-      const alreadyAttached = existing.find((e) => e.mediaId === mediaId);
-      if (!alreadyAttached) {
-        await ctx.db.insert("articleMedia", {
-          articleId: args.articleId,
-          mediaId,
-          order: order++,
-        });
-      }
-    }
-
-    return args.articleId;
+    return await attachMediaImpl(ctx, args);
   },
 });
+
+export const attachMediaInternal = internalMutation({
+  args: {
+    articleId: v.id("articles"),
+    mediaIds: v.array(v.id("media")),
+  },
+  handler: async (ctx, args) => {
+    return await attachMediaImpl(ctx, args);
+  },
+});
+
+
+// Core logic for detaching media from an article
+async function detachMediaImpl(ctx: any, args: { articleId: any, mediaId: any }) {
+  const associations = await ctx.db
+    .query("articleMedia")
+    .withIndex("by_article", (q: any) => q.eq("articleId", args.articleId))
+    .collect();
+
+  const toDelete = associations.find((a: any) => a.mediaId === args.mediaId);
+  if (toDelete) {
+    await ctx.db.delete(toDelete._id);
+  }
+
+  return args.articleId;
+}
 
 export const detachMedia = mutation({
   args: {
@@ -513,16 +644,17 @@ export const detachMedia = mutation({
       throw new Error("Not authenticated");
     }
 
-    const associations = await ctx.db
-      .query("articleMedia")
-      .withIndex("by_article", (q) => q.eq("articleId", args.articleId))
-      .collect();
-
-    const toDelete = associations.find((a) => a.mediaId === args.mediaId);
-    if (toDelete) {
-      await ctx.db.delete(toDelete._id);
-    }
-
-    return args.articleId;
+    return await detachMediaImpl(ctx, args);
   },
 });
+
+export const detachMediaInternal = internalMutation({
+  args: {
+    articleId: v.id("articles"),
+    mediaId: v.id("media"),
+  },
+  handler: async (ctx, args) => {
+    return await detachMediaImpl(ctx, args);
+  },
+});
+
